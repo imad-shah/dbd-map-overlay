@@ -14,7 +14,8 @@
  * and stored in <userData>/tessdata.
  *
  * IPC handles exposed to the renderer:
- *   map-detector-start          → start() — creates workers + begins polling
+ *   map-detector-start          → start() — creates workers + begins continuous polling
+ *   map-detector-oneshot        → detectOnce() — runs until first match, then auto-stops
  *   map-detector-stop           → stop()
  *   map-detector-status         → returns Boolean (running)
  *   map-detector-reload-realms  → re-scans photo dir for new realm names
@@ -75,6 +76,7 @@ class MapDetector {
         this.workers = [];
         this.timer = null;
         this.running = false;
+        this.mode = 'continuous'; // 'continuous' | 'oneshot'
         this.intervalMs = 1000;
 
         /** Maps every localised string (lowercase) to its English key */
@@ -177,6 +179,7 @@ class MapDetector {
 
     _setupIPC() {
         ipcMain.handle('map-detector-start',         () => this.start());
+        ipcMain.handle('map-detector-oneshot',       () => this.detectOnce());
         ipcMain.handle('map-detector-stop',          () => this.stop());
         ipcMain.handle('map-detector-status',        () => this.running);
         ipcMain.handle('map-detector-reload-realms', () => this._loadRealmKeys());
@@ -578,6 +581,12 @@ class MapDetector {
                 detectionKey.replace(/'/g, '').trim()
             );
 
+            // Oneshot mode: stop after first successful detection
+            if (this.mode === 'oneshot') {
+                console.log('MapDetector: oneshot — stopping after match');
+                this.stop();
+            }
+
         } catch (err) {
             console.error('MapDetector::_detect:', err);
         } finally {
@@ -594,7 +603,24 @@ class MapDetector {
     async start() {
         if (this.running) return;
         this.running = true;
-        console.log('MapDetector: starting');
+        this.mode = 'continuous';
+        console.log('MapDetector: starting (continuous)');
+        await this._createWorkers();
+        this._loop();
+    }
+
+    /**
+     * Runs detection once and auto-stops after the first successful match.
+     * If already running in continuous mode, stops and switches to oneshot.
+     */
+    async detectOnce() {
+        if (this.running) {
+            console.log('MapDetector: stopping continuous mode, switching to oneshot');
+            await this.stop();
+        }
+        this.running = true;
+        this.mode = 'oneshot';
+        console.log('MapDetector: starting (oneshot)');
         await this._createWorkers();
         this._loop();
     }
@@ -617,6 +643,7 @@ class MapDetector {
     async stop() {
         if (!this.running) return;
         this.running = false;
+        this.mode = 'continuous';
         console.log('MapDetector: stopping');
 
         clearInterval(this.timer);

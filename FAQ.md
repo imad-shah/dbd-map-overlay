@@ -17,6 +17,15 @@ By doing this, the game will not take control of the screen and the overlay will
 As stated in this app ToS, the app uses CloudFlare CSAM detection to block any uses of illegal images. This will block the user from using the app.
 There will be a manual check of the image, if found to be illegal, the user will be permanently blocked, otherwise you will be unblocked.
 
+## How does auto-detection work?
+1. Enable the **Auto-detect map** toggle in the settings.
+2. At the start of a match, press **Ctrl+D** (Cmd+D on macOS).
+3. The app takes a screenshot of the Dead by Daylight window and runs OCR on the lower-left area where the map/realm name appears on the loading screen.
+4. Once a map is recognized, the overlay updates automatically and detection stops.
+5. If you're in a lobby and someone else changes the map, detection stops to avoid conflicts.
+
+**Tip:** Press Ctrl+D again at the start of each match to re-trigger detection. The detector only scans while the loading screen text is visible — it won't interfere with gameplay.
+
 ## Where is the source code of the Server?
 Currently, the source code of the server is not public, but it will be in the future.
 

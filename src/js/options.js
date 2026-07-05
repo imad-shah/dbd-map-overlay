@@ -53,7 +53,8 @@ class Options {
 
         if (settings.get("mapDetection") === true) {
             $("#mapDetectionCheck").prop("checked", true);
-            ipcRenderer.invoke('map-detector-start');
+            // Don't auto-start continuous detection anymore.
+            // Detection is now triggered by hotkey (Ctrl+D) in oneshot mode.
         }
 
         const savedLang = settings.get("ocrLanguage") || 'all';
@@ -92,11 +93,11 @@ class Options {
         $("#mapDetectionCheck").on("input", async function (ev) {
             var val = $(this).prop('checked');
             await settings.set("mapDetection", val);
-            if (val) {
-                ipcRenderer.invoke('map-detector-start');
-            } else {
+            if (!val) {
+                // Stop any running detection when the feature is disabled
                 ipcRenderer.invoke('map-detector-stop');
             }
+            // Detection is triggered by hotkey (Ctrl+D), not continuous polling
         });
         async function restartDetectionIfRunning() {
             const running = await ipcRenderer.invoke('map-detector-status');

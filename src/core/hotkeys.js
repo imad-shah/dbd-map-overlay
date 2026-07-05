@@ -92,6 +92,10 @@ class Hotkeys {
             console.log('CommandOrControl+r pressed → rotate-map');
             win.send('rotate-map');
         });
+        globalShortcut.register('CommandOrControl+d', () => {
+            console.log('CommandOrControl+d pressed → trigger-map-detection');
+            win.send('trigger-map-detection');
+        });
     }
 
     registerHotkeys(hotkeys) {

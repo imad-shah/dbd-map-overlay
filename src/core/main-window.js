@@ -17,6 +17,7 @@ class MainWindow {
         this.obsWindow = obsWindow;
         this.overlayWindow = overlayWindow;
         this.settings = settings;
+        this.mapDetector = null; // set externally after construction
         ipcMain.on('obs-open', async (event, map) => {
             obsWindow.show()
         });
@@ -32,6 +33,9 @@ class MainWindow {
             }));
         })
         ipcMain.on('map-change', async (event, map) => {
+            // Stop detection when map changes (user click, lobby update, etc.)
+            if (this.mapDetector) this.mapDetector.stop();
+
             if (!map) {
                 overlayWindow.send('map-hide');
                 obsWindow.send('map-hide');

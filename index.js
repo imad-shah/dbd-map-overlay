@@ -63,6 +63,7 @@ if (isWayland() && !process.argv.includes('--ozone-platform=x11')) {
     const trayController = new TrayController(mainWindow);
     const streamDeck = new StreamDeck();
     const mapDetector = new MapDetector(mainWindow, settings);
+    mainWindow.mapDetector = mapDetector;
 
     if (gotLock) {
         app.on('second-instance', (event, argv, workingDirectory) => {
