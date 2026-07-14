@@ -1,6 +1,7 @@
 const {ipcRenderer} = require("electron");
 const {debugLog} = require("./logger");
-const {GITHUB_ASSETS, ASSETS_REPO} = require("./consts");
+const {GITHUB_ASSETS, ASSETS_REPO, AUTO_MAP_CREATOR} = require("./consts");
+const {findClosestCreatorMap} = require('./map-lookup');
 const axios = require("axios");
 const crypto = require("crypto");
 
@@ -104,6 +105,10 @@ class Images {
         })
         ipcRenderer.on('show-map-command', (event, arg) => {
             let mapIamgePath = this.findClosestMapMatch(arg)
+            if (!mapIamgePath) {
+                debugLog("mapCommand::setMap::error", `No ${AUTO_MAP_CREATOR} map matched ${arg}`);
+                return;
+            }
             const response = this.sendMap(mapIamgePath, "standard");
             if (response) {
                 debugLog("mapCommand::setMap::success", "Map set successfully");
@@ -205,28 +210,7 @@ class Images {
     }
 
     findClosestMapMatch(mapKey) {
-        const normalizedKey = mapKey.replace(/\\/g, '/').trim().toLowerCase();
-        const preferred = (this.settings.get('preferredCreator') || '').toLowerCase();
-
-        const allKeys = Object.keys(this.pathLookup);
-
-        const exactMatch = key => key.replace(/\.[^.]+$/, '').toLowerCase() === normalizedKey;
-        const partialMatch = key => key.toLowerCase().includes(normalizedKey);
-
-        // Preferred creator — exact then partial
-        if (preferred) {
-            const inPreferred = allKeys.filter(k => k.toLowerCase().startsWith(preferred + '/'));
-            const exact = inPreferred.find(exactMatch);
-            if (exact) return this.pathLookup[exact];
-            const partial = inPreferred.find(partialMatch);
-            if (partial) return this.pathLookup[partial];
-        }
-
-        // Fallback — all creators
-        const exact = allKeys.find(exactMatch);
-        if (exact) return this.pathLookup[exact];
-        const partial = allKeys.find(partialMatch);
-        return partial ? this.pathLookup[partial] : null;
+        return findClosestCreatorMap(this.pathLookup, mapKey, AUTO_MAP_CREATOR);
     }
 
 

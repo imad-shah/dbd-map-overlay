@@ -4,7 +4,7 @@
  * MapDetector — periodically screenshots the Dead By Daylight window,
  * runs multi-language OCR on the lower-center area where the game
  * displays REALM / MAP text, and fires `show-map-command` when a
- * known realm+map pair is recognised in any supported locale.
+ * map label with a corresponding Hens333 image is recognised.
  *
  * OCR is split into two parallel tesseract.js workers:
  *   Group A — Latin + Cyrillic  (en, de, es, fr, it, pt, ru, pl, tr)
@@ -18,7 +18,7 @@
  *   map-detector-oneshot        → detectOnce() — runs until first match, then auto-stops
  *   map-detector-stop           → stop()
  *   map-detector-status         → returns Boolean (running)
- *   map-detector-reload-realms  → re-scans photo dir for new realm names
+ *   map-detector-reload-realms  → re-scans Hens333 image names after sync
  */
 
 const { desktopCapturer, ipcMain, app, screen } = require('electron');
@@ -27,6 +27,7 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 const { Window, Monitor } = require('node-screenshots');
+const AUTO_MAP_CREATOR = 'hens333';
 
 // ─── Language groups by writing system ───────────────────────────────────────
 // Covering all 15 localisation files bundled in src/i18n/
@@ -88,7 +89,10 @@ class MapDetector {
         /** English realm names (lowercase) derived from i18n + photo directory */
         this.realmKeys = new Set();
 
-        /** Last matched "realm/map" key — suppresses duplicate events */
+        /** Normalized map filenames available for the automatic Hens333 lookup */
+        this.mapNameKeys = new Set();
+
+        /** Last matched map key — suppresses duplicate events */
         this.lastDetected = null;
 
         /** Raw PNG of the last crop — skips preprocess+OCR when screen is unchanged */
@@ -144,11 +148,12 @@ class MapDetector {
     }
 
     /**
-     * Populates realmKeys starting from the hard-coded fallback set,
-     * then augmenting from the actual photo directory structure so future
-     * DLC realms are picked up automatically once images are downloaded.
+     * Populates realmKeys from the fallback set and scans the cached Hens333
+     * tree for the map filenames accepted by automatic detection.
      */
     _loadRealmKeys() {
+        this.realmKeys.clear();
+        this.mapNameKeys.clear();
         for (const r of FALLBACK_REALMS) this.realmKeys.add(r);
         console.log(`MapDetector: loaded ${FALLBACK_REALMS.size} fallback realm(s)`);
 
@@ -161,16 +166,23 @@ class MapDetector {
             }
             let added = 0;
             for (const creator of fs.readdirSync(photoDir)) {
+                if (creator.toLowerCase() !== AUTO_MAP_CREATOR) continue;
                 const creatorPath = path.join(photoDir, creator);
                 if (!fs.statSync(creatorPath).isDirectory()) continue;
                 for (const realm of fs.readdirSync(creatorPath)) {
-                    if (fs.statSync(path.join(creatorPath, realm)).isDirectory()) {
+                    const realmPath = path.join(creatorPath, realm);
+                    if (fs.statSync(realmPath).isDirectory()) {
                         this.realmKeys.add(realm.toLowerCase());
                         added++;
+                        for (const file of fs.readdirSync(realmPath)) {
+                            const filePath = path.join(realmPath, file);
+                            if (!fs.statSync(filePath).isFile()) continue;
+                            this.mapNameKeys.add(this._canonicalMapName(path.parse(file).name));
+                        }
                     }
                 }
             }
-            console.log(`MapDetector: found ${added} realm(s) from photo dir, total: ${this.realmKeys.size}`);
+            console.log(`MapDetector: found ${added} Hens333 realm(s) and ${this.mapNameKeys.size} map name(s)`);
         } catch (err) {
             // non-fatal — fallback list covers the base game
             console.warn(`MapDetector: photo dir scan failed (${err.message}), using fallback realms only`);
@@ -183,6 +195,28 @@ class MapDetector {
         ipcMain.handle('map-detector-stop',          () => this.stop());
         ipcMain.handle('map-detector-status',        () => this.running);
         ipcMain.handle('map-detector-reload-realms', () => this._loadRealmKeys());
+    }
+
+    _canonicalMapName(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/^the\b\s*/, '')
+            .replace(/[^a-z0-9]+/g, '');
+    }
+
+    _isKnownMapName(value) {
+        const normalized = this._canonicalMapName(value);
+        if (!normalized || this.mapNameKeys.size === 0) return false;
+        if (this.mapNameKeys.has(normalized)) return true;
+
+        const maxDistance = Math.max(2, Math.floor(normalized.length * 0.18));
+        for (const mapName of this.mapNameKeys) {
+            if (Math.abs(mapName.length - normalized.length) > maxDistance) continue;
+            if (this._levenshtein(mapName, normalized) <= maxDistance) return true;
+        }
+        return false;
     }
 
     /**
@@ -439,7 +473,7 @@ class MapDetector {
             const raw = lines[i].toLowerCase().trim();
             const result = this._tryMatch(raw);
             console.log(`MapDetector: line [${i}] "${raw}" → ${result ?? 'NO MATCH'}`);
-            if (result) {
+            if (result && this._isKnownMapName(result)) {
                 console.log(`MapDetector: matched map="${result}"`);
                 return { realm: null, map: result };
             }
@@ -453,7 +487,7 @@ class MapDetector {
                 // No separator first: reconstructs a single fragmented word
                 const noSep = chunk.join('');
                 const r1 = this._tryMatch(noSep);
-                if (r1) {
+                if (r1 && this._isKnownMapName(r1)) {
                     console.log(`MapDetector: lines [${i}..${i+len-1}] concat="" → "${r1}"`);
                     return { realm: null, map: r1 };
                 }
@@ -461,7 +495,7 @@ class MapDetector {
                 // Space separator: catches multi-word labels split across lines
                 const withSep = chunk.join(' ');
                 const r2 = this._tryMatch(withSep);
-                if (r2) {
+                if (r2 && this._isKnownMapName(r2)) {
                     console.log(`MapDetector: lines [${i}..${i+len-1}] concat=" " → "${r2}"`);
                     return { realm: null, map: r2 };
                 }
@@ -602,6 +636,7 @@ class MapDetector {
      */
     async start() {
         if (this.running) return;
+        if (this.mainWindow.navigationTracker) this.mainWindow.navigationTracker.reset();
         this.running = true;
         this.mode = 'continuous';
         console.log('MapDetector: starting (continuous)');
@@ -618,6 +653,7 @@ class MapDetector {
             console.log('MapDetector: stopping continuous mode, switching to oneshot');
             await this.stop();
         }
+        if (this.mainWindow.navigationTracker) this.mainWindow.navigationTracker.reset();
         this.running = true;
         this.mode = 'oneshot';
         console.log('MapDetector: starting (oneshot)');

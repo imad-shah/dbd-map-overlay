@@ -79,6 +79,25 @@ class OverlayWindow {
         }
     }
 
+    beginInteraction() {
+        if (!this.window || this.window.isDestroyed()) return false;
+        this.window.setFocusable(true);
+        this.window.setIgnoreMouseEvents(false);
+        this.window.focus();
+        return true;
+    }
+
+    endInteraction() {
+        if (!this.window || this.window.isDestroyed()) return;
+        const isDraggable = Boolean(this.settings && this.settings.get('draggable'));
+        if (isDraggable) {
+            this.window.setIgnoreMouseEvents(false);
+        } else {
+            this.window.setIgnoreMouseEvents(true, { forward: true });
+        }
+        this.window.setFocusable(false);
+    }
+
     setSize(width, height) {
         if (this.window) {
             this.window.setSize(width, height);

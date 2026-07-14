@@ -86,6 +86,7 @@ const streamDeck = new StreamDeck(images);
 
 document.addEventListener('DOMContentLoaded', async function () {
     await images.remoteUpdateImages()
+    await ipcRenderer.invoke('map-detector-reload-realms')
     await images.displayImages("")
     await custom.generateCustomList()
     await hotkeys.loadHotkeys()

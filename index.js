@@ -28,6 +28,7 @@ if (isWayland() && !process.argv.includes('--ozone-platform=x11')) {
     const TrayController = require("./src/core/tray");
     const StreamDeck = require("./src/core/stream-deck");
     const MapDetector = require("./src/core/map-detector");
+    const NavigationTracker = require("./src/core/navigation-tracker");
 
 
     const gotLock = app.requestSingleInstanceLock();
@@ -58,7 +59,9 @@ if (isWayland() && !process.argv.includes('--ozone-platform=x11')) {
     const obsWindow = new ObsWindow();
     const overlayWindow = new OverlayWindow(settings);
     const mainWindow = new MainWindow(obsWindow, overlayWindow, settings);
-    const hotkeys = new Hotkeys(mainWindow);
+    const navigationTracker = new NavigationTracker(mainWindow, overlayWindow, settings);
+    mainWindow.navigationTracker = navigationTracker;
+    const hotkeys = new Hotkeys(mainWindow, navigationTracker);
     const userData = new UserData();
     const trayController = new TrayController(mainWindow);
     const streamDeck = new StreamDeck();
@@ -104,6 +107,7 @@ if (isWayland() && !process.argv.includes('--ozone-platform=x11')) {
     })
 
     app.on('before-quit', () => {
+        navigationTracker.destroy();
         trayController.destroy();
     });
 }

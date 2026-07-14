@@ -19,12 +19,12 @@ There will be a manual check of the image, if found to be illegal, the user will
 
 ## How does auto-detection work?
 1. Enable the **Auto-detect map** toggle in the settings.
-2. At the start of a match, press **Ctrl+D** (Cmd+D on macOS).
+2. At the start of a match, press **Ctrl+M** (Cmd+M on macOS).
 3. The app takes a screenshot of the Dead by Daylight window and runs OCR on the lower-left area where the map/realm name appears on the loading screen.
 4. Once a map is recognized, the overlay updates automatically and detection stops.
 5. If you're in a lobby and someone else changes the map, detection stops to avoid conflicts.
 
-**Tip:** Press Ctrl+D again at the start of each match to re-trigger detection. The detector only scans while the loading screen text is visible — it won't interfere with gameplay.
+**Tip:** Press Ctrl+M again at the start of each match to re-trigger detection. The detector only scans while the loading screen text is visible — it won't interfere with gameplay.
 
 ## Where is the source code of the Server?
 Currently, the source code of the server is not public, but it will be in the future.

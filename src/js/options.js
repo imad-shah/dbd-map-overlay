@@ -54,7 +54,7 @@ class Options {
         if (settings.get("mapDetection") === true) {
             $("#mapDetectionCheck").prop("checked", true);
             // Don't auto-start continuous detection anymore.
-            // Detection is now triggered by hotkey (Ctrl+D) in oneshot mode.
+            // Detection is now triggered by hotkey (Ctrl+M) in oneshot mode.
         }
 
         const savedLang = settings.get("ocrLanguage") || 'all';
@@ -62,6 +62,19 @@ class Options {
 
         const savedCreator = settings.get("preferredCreator") || '';
         $("#preferredCreatorSelect").val(savedCreator);
+
+        const savedNavigationSpeed = Number(settings.get("navigationMoveSpeed")) || 0.035;
+        const savedMouseSensitivity = Number(settings.get("navigationMouseSensitivity")) || 0.15;
+        const updateNavigationSpeedLabel = value => {
+            $("#navigationMoveSpeedValue").text(`${(Number(value) * 100).toFixed(1)}% map/sec`);
+        };
+        const updateMouseSensitivityLabel = value => {
+            $("#navigationMouseSensitivityValue").text(`${Number(value).toFixed(2)}°/unit`);
+        };
+        $("#navigationMoveSpeedRange").val(savedNavigationSpeed);
+        $("#navigationMouseSensitivityRange").val(savedMouseSensitivity);
+        updateNavigationSpeedLabel(savedNavigationSpeed);
+        updateMouseSensitivityLabel(savedMouseSensitivity);
 
         $("#hiddenCheck").on("input", async function (ev) {
             var input = $(this);
@@ -97,7 +110,7 @@ class Options {
                 // Stop any running detection when the feature is disabled
                 ipcRenderer.invoke('map-detector-stop');
             }
-            // Detection is triggered by hotkey (Ctrl+D), not continuous polling
+            // Detection is triggered by hotkey (Ctrl+M), not continuous polling
         });
         async function restartDetectionIfRunning() {
             const running = await ipcRenderer.invoke('map-detector-status');
@@ -114,6 +127,16 @@ class Options {
         $("#preferredCreatorSelect").on("input", async function (ev) {
             await settings.set("preferredCreator", $(this).val());
             await restartDetectionIfRunning();
+        });
+        $("#navigationMoveSpeedRange").on("input", async function () {
+            const value = Number($(this).val());
+            updateNavigationSpeedLabel(value);
+            await settings.set("navigationMoveSpeed", value);
+        });
+        $("#navigationMouseSensitivityRange").on("input", async function () {
+            const value = Number($(this).val());
+            updateMouseSensitivityLabel(value);
+            await settings.set("navigationMouseSensitivity", value);
         });
         $("#sizeRange").on("input", async function (ev) {
             var input = $(this);

@@ -9,8 +9,9 @@ class Hotkeys {
 
     mainWindow;
 
-    constructor(mainWindow) {
+    constructor(mainWindow, navigationTracker = null) {
         this.mainWindow = mainWindow;
+        this.navigationTracker = navigationTracker;
         let classInstance = this;
         ipcMain.on('save-hotkeys', (event, settings) => {
             const { hotkey, mapkey, id: incomingId } = settings;   // renderer may already send an id
@@ -92,9 +93,17 @@ class Hotkeys {
             console.log('CommandOrControl+r pressed → rotate-map');
             win.send('rotate-map');
         });
-        globalShortcut.register('CommandOrControl+d', () => {
-            console.log('CommandOrControl+d pressed → trigger-map-detection');
+        globalShortcut.register('CommandOrControl+m', () => {
+            console.log('CommandOrControl+m pressed → trigger-map-detection');
             win.send('trigger-map-detection');
+        });
+        globalShortcut.register('CommandOrControl+Shift+n', () => {
+            console.log('CommandOrControl+Shift+n pressed → navigation calibration');
+            if (this.navigationTracker) this.navigationTracker.startCalibration();
+        });
+        globalShortcut.register('CommandOrControl+Shift+Space', () => {
+            console.log('CommandOrControl+Shift+Space pressed → toggle navigation tracking');
+            if (this.navigationTracker) this.navigationTracker.toggleTracking();
         });
     }
 

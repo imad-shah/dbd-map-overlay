@@ -6,6 +6,7 @@
   "author": "Luca <admin@lucaservers.com>",
   "scripts": {
     "start": "electron index.js",
+    "test": "node --test",
     "prebuild": "bash scripts/prebuild.sh",
     "build": "npm run prebuild && electron-builder -wl",
     "build:win": "npm run prebuild && electron-builder -w",
@@ -48,6 +49,10 @@
       "node_modules/tesseract.js-core/**",
       "node_modules/sharp/**",
       "node_modules/@img/**",
+      "node_modules/@koromix/koffi-*/**",
+      "node_modules/koffi/**",
+      "node_modules/koffi-*/**",
+      "node_modules/uiohook-napi/**",
       "node_modules/node-screenshots/**/*.node",
       "node_modules/node-screenshots-*/**/*.node"
     ],
@@ -68,11 +73,13 @@
     "electron-updater": "^6.7.3",
     "image-size": "^2.0.2",
     "jquery": "^4.0.0",
+    "koffi": "^3.1.1",
     "marked": "^17.0.2",
     "node-screenshots": "^0.2.8",
     "popper.js": "^1.16.1",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
+    "uiohook-napi": "^1.5.5",
     "uuid": "^13.0.0"
   },
   "optionalDependencies": {

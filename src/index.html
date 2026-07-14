@@ -157,6 +157,10 @@
                             <button class="nav-link" id="detection-tab" data-bs-toggle="tab" data-bs-target="#settings-detection"
                                     type="button" role="tab">Detection</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="navigation-tab" data-bs-toggle="tab" data-bs-target="#settings-navigation"
+                                    type="button" role="tab">Navigation</button>
+                        </li>
                     </ul>
 
                     <div class="tab-content pt-3" id="settingsTabContent">
@@ -232,7 +236,9 @@
                                 <span><kbd>Cmd / Ctrl + P</kbd> – Reload Map when in a Lobby</span>
                                 <span><kbd>Cmd / Ctrl + H</kbd> – Hide currently open Map</span>
                                 <span><kbd>Cmd / Ctrl + R</kbd> – Rotate Map by 90 degrees</span>
-                                <span><kbd>Cmd / Ctrl + D</kbd> – Trigger auto-detection (OCR scan for current map)</span>
+                                <span><kbd>Cmd / Ctrl + M</kbd> – Trigger auto-detection (OCR scan for current map)</span>
+                                <span><kbd>Cmd / Ctrl + Shift + N</kbd> – Place navigation pin and facing direction</span>
+                                <span><kbd>Cmd / Ctrl + Shift + Space</kbd> – Pause or resume navigation tracking</span>
                             </div>
                         </div>
 
@@ -304,6 +310,27 @@
                                 <option value="">Any Creator</option>
                             </select>
                             <small class="text-muted d-block">When auto-detecting, maps from this creator are preferred</small>
+                        </div>
+                        <!-- Navigation Tab -->
+                        <div class="tab-pane fade" id="settings-navigation" role="tabpanel">
+                            <label for="navigationMoveSpeedRange" class="form-label">
+                                Movement speed: <span id="navigationMoveSpeedValue"></span>
+                            </label>
+                            <input type="range" class="form-range" min="0.005" max="0.1" step="0.005"
+                                   id="navigationMoveSpeedRange">
+                            <small class="text-muted d-block mb-3">Map width traversed per second while holding a movement key.</small>
+
+                            <label for="navigationMouseSensitivityRange" class="form-label">
+                                Mouse heading sensitivity: <span id="navigationMouseSensitivityValue"></span>
+                            </label>
+                            <input type="range" class="form-range" min="0.01" max="1" step="0.01"
+                                   id="navigationMouseSensitivityRange">
+                            <small class="text-muted d-block mb-3">Degrees of character heading per captured horizontal mouse unit.</small>
+
+                            <div class="alert alert-warning py-2 mb-0">
+                                Dead reckoning cannot see walls, collisions, involuntary movement, or DBD's true coordinates.
+                                Recalibrate with Ctrl+Shift+N whenever the marker drifts.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -477,7 +504,7 @@
                 <div class="col-auto d-flex align-items-center gap-2">
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" id="mapDetectionCheck" role="switch">
-                        <label class="form-check-label text-white" for="mapDetectionCheck">Auto-detect map (press Ctrl+D to trigger)</label>
+                        <label class="form-check-label text-white" for="mapDetectionCheck">Auto-detect map (press Ctrl+M to trigger)</label>
                     </div>
                     <span class="badge bg-warning text-dark">BETA</span>
                 </div>

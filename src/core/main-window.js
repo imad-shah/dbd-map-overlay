@@ -12,6 +12,7 @@ class MainWindow {
     obsWindow;
     overlayWindow;
     settings;
+    navigationTracker;
 
     constructor(obsWindow, overlayWindow, settings) {
         this.obsWindow = obsWindow;
@@ -35,6 +36,7 @@ class MainWindow {
         ipcMain.on('map-change', async (event, map) => {
             // Stop detection when map changes (user click, lobby update, etc.)
             if (this.mapDetector) this.mapDetector.stop();
+            if (this.navigationTracker) this.navigationTracker.setMap(map);
 
             if (!map) {
                 overlayWindow.send('map-hide');
@@ -56,6 +58,10 @@ class MainWindow {
                     imgData = Buffer.from(map, "base64")
                 }
                 const dimensions = imageSize(imgData);
+                const mapWidth = parseInt(settings.get('size'));
+                const mapHeight = (mapWidth / dimensions.width) * dimensions.height;
+                const overlayWidth = mapWidth + 5;
+                const overlayHeight = parseInt(mapHeight * 1.1);
                 const displays = screen.getAllDisplays();
                 const monitorIndex = parseInt(settings.get('monitor')) || 0;
                 const selectedDisplay = displays[monitorIndex] || displays[0] || screen.getPrimaryDisplay();
@@ -67,11 +73,11 @@ class MainWindow {
                     x: this.settings.get('overlayX') || 0,
                     y: this.settings.get('overlayY') || 0
                 })
-                overlayWindow.setSize(parseInt(settings.get('size')) + 5, parseInt((settings.get('size') / dimensions.width) * dimensions.height * 1.1))
+                overlayWindow.setSize(overlayWidth, overlayHeight)
                 console.log("Selected display:", selectedDisplay);
                 console.log("Overlay bounds:", overlayWindow.getBounds());
                 console.log("Image dimensions:", dimensions);
-                console.log("Calculated overlay size:", {width: parseInt(settings.get('size')) + 5, height: parseInt((settings.get('size') / dimensions.width) * dimensions.height * 1.1)});
+                console.log("Calculated overlay size:", {width: overlayWidth, height: overlayHeight});
                 console.log("Display bounds:", {x: displayX, y: displayY, width, height});
                 console.log("Overlay position setting:", settings.get('position'));
                 console.log("Draggable setting:", settings.get('draggable'));

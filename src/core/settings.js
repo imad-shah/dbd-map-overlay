@@ -19,7 +19,9 @@ const defaultConfig = {
     overlayY: null,
     mapDetection: false,
     ocrLanguage: 'all',
-    preferredCreator: ''
+    preferredCreator: '',
+    navigationMoveSpeed: 0.035,
+    navigationMouseSensitivity: 0.15
 };
 
 class Settings {
