@@ -23,6 +23,60 @@ function applyHeadingDelta(heading, mouseDeltaX, degreesPerMouseUnit) {
     return normalizeHeading((Number(heading) || 0) + delta);
 }
 
+function constrainPoseToBoundary(pose, boundary) {
+    const fallback = {
+        ...pose,
+        x: clamp(Number(pose.x) || 0, 0, 1),
+        y: clamp(Number(pose.y) || 0, 0, 1)
+    };
+    if (!boundary || !Array.isArray(boundary.rows) || boundary.rows.length < 2) {
+        return fallback;
+    }
+
+    const lastRow = boundary.rows.length - 1;
+    let y = clamp(fallback.y, Number(boundary.minY) || 0, Number(boundary.maxY) || 1);
+    let rowIndex = Math.round(y * lastRow);
+    let intervals = boundary.rows[rowIndex];
+    if (!Array.isArray(intervals) || intervals.length === 0) {
+        let nearestIndex = null;
+        for (let distance = 1; distance <= lastRow; distance++) {
+            for (const candidate of [rowIndex - distance, rowIndex + distance]) {
+                if (
+                    candidate >= 0 && candidate <= lastRow &&
+                    Array.isArray(boundary.rows[candidate]) &&
+                    boundary.rows[candidate].length > 0
+                ) {
+                    nearestIndex = candidate;
+                    break;
+                }
+            }
+            if (nearestIndex !== null) break;
+        }
+        if (nearestIndex === null) return fallback;
+        rowIndex = nearestIndex;
+        y = rowIndex / lastRow;
+        intervals = boundary.rows[rowIndex];
+    }
+
+    let x = fallback.x;
+    if (!intervals.some(interval => x >= interval.min && x <= interval.max)) {
+        let nearestX = x;
+        let nearestDistance = Infinity;
+        for (const interval of intervals) {
+            for (const edge of [interval.min, interval.max]) {
+                const distance = Math.abs(x - edge);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestX = edge;
+                }
+            }
+        }
+        x = nearestX;
+    }
+
+    return {...pose, x, y};
+}
+
 /**
  * Applies slow map-relative position and heading corrections to a pose.
  * These controls are independent of the camera-relative WASD movement.
@@ -90,6 +144,7 @@ module.exports = {
     applyPoseCorrection,
     advancePose,
     clamp,
+    constrainPoseToBoundary,
     headingFromPoints,
     normalizeHeading
 };

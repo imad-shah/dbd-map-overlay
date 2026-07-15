@@ -5,16 +5,17 @@ const {
     applyHeadingDelta,
     applyPoseCorrection,
     advancePose,
+    constrainPoseToBoundary,
     normalizeHeading
 } = require('./navigation-math');
 const {NavigationInput} = require('./navigation-input');
 
 const TRACKING_INTERVAL_MS = 1000 / 30;
 const MAX_TICK_SECONDS = 0.1;
-const DEFAULT_MOVE_SPEED = 0.035;
+const DEFAULT_MOVE_SPEED = 0.07;
 const DEFAULT_MOUSE_SENSITIVITY = 0.135;
-const POSITION_CORRECTION_SPEED = 0.02;
-const HEADING_CORRECTION_SPEED = 15;
+const POSITION_CORRECTION_SPEED = 0.08;
+const HEADING_CORRECTION_SPEED = 60;
 
 class NavigationTracker {
     constructor(mainWindow, overlayWindow, settings, input = null, ipc = ipcMain) {
@@ -22,6 +23,7 @@ class NavigationTracker {
         this.overlayWindow = overlayWindow;
         this.settings = settings;
         this.currentMap = null;
+        this.playableBoundary = null;
         this.mapVisible = false;
         this.resumeTrackingWhenShown = false;
         this.stateBeforeCalibration = null;
@@ -183,12 +185,13 @@ class NavigationTracker {
             POSITION_CORRECTION_SPEED,
             HEADING_CORRECTION_SPEED
         );
-        const pose = advancePose(
+        const advancedPose = advancePose(
             correctedPose,
             this.movement,
             elapsed,
             this._settingNumber('navigationMoveSpeed', DEFAULT_MOVE_SPEED, 0, 0.25)
         );
+        const pose = constrainPoseToBoundary(advancedPose, this.playableBoundary);
         this.state.heading = pose.heading;
         this.state.position = {x: pose.x, y: pose.y};
         this._broadcast(false);
@@ -238,6 +241,7 @@ class NavigationTracker {
         this._stopInputTracking();
         this.overlayWindow.endInteraction();
         this.currentMap = normalizedMap;
+        this.playableBoundary = null;
         this.mapVisible = true;
         this.resumeTrackingWhenShown = false;
         this.stateBeforeCalibration = null;
@@ -254,6 +258,28 @@ class NavigationTracker {
 
     canStartCalibration() {
         return this.mapVisible && this._isHens333Map(this.currentMap);
+    }
+
+    supportsMap(map) {
+        return this._isHens333Map(this._normalizeMap(map));
+    }
+
+    hasBoundaryForMap(map) {
+        return this.playableBoundary !== null && this._normalizeMap(map) === this.currentMap;
+    }
+
+    setPlayableBoundary(map, boundary) {
+        if (this._normalizeMap(map) !== this.currentMap || !boundary) return false;
+        this.playableBoundary = boundary;
+        if (this.state.position) {
+            const pose = constrainPoseToBoundary(
+                {...this.state.position, heading: this.state.heading},
+                this.playableBoundary
+            );
+            this.state.position = {x: pose.x, y: pose.y};
+            this._broadcast();
+        }
+        return true;
     }
 
     startCalibration() {
@@ -294,11 +320,12 @@ class NavigationTracker {
             return {ok: false, reason: 'invalid-calibration'};
         }
 
+        const pose = constrainPoseToBoundary({x, y, heading}, this.playableBoundary);
         this.state = {
             status: 'calibrated',
             map: this.currentMap,
-            position: {x, y},
-            heading: normalizeHeading(heading),
+            position: {x: pose.x, y: pose.y},
+            heading: normalizeHeading(pose.heading),
             tracking: false,
             inputError: null
         };
@@ -365,6 +392,7 @@ class NavigationTracker {
         this._stopInputTracking();
         this.overlayWindow.endInteraction();
         this.currentMap = null;
+        this.playableBoundary = null;
         this.mapVisible = false;
         this.resumeTrackingWhenShown = false;
         this.stateBeforeCalibration = null;

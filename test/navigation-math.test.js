@@ -6,6 +6,7 @@ const {
     applyHeadingDelta,
     applyPoseCorrection,
     advancePose,
+    constrainPoseToBoundary,
     headingFromPoints,
     normalizeHeading
 } = require('../src/core/navigation-math');
@@ -151,4 +152,21 @@ test('normalizes diagonal movement and clamps map bounds', () => {
     );
     assert.equal(pose.x, 1);
     assert.equal(pose.y, 0);
+});
+
+test('clamps a pose to the nearest interval in a concave boundary row', () => {
+    const boundary = {
+        minY: 0,
+        maxY: 1,
+        rows: [
+            [{min: 0.1, max: 0.9}],
+            [{min: 0.1, max: 0.4}, {min: 0.7, max: 0.9}],
+            [{min: 0.2, max: 0.8}]
+        ]
+    };
+
+    assert.deepEqual(
+        constrainPoseToBoundary({x: 0.6, y: 0.5, heading: 12}, boundary),
+        {x: 0.7, y: 0.5, heading: 12}
+    );
 });

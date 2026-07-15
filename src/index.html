@@ -318,7 +318,7 @@
                             <label for="navigationMoveSpeedRange" class="form-label">
                                 Movement speed: <span id="navigationMoveSpeedValue"></span>
                             </label>
-                            <input type="range" class="form-range" min="0.005" max="0.1" step="0.005"
+                            <input type="range" class="form-range" min="0.005" max="0.25" step="0.005"
                                    id="navigationMoveSpeedRange">
                             <small class="text-muted d-block mb-3">Map width traversed per second while holding a movement key.</small>
 
@@ -331,6 +331,7 @@
 
                             <div class="alert alert-warning py-2 mb-0">
                                 Dead reckoning cannot see walls, collisions, involuntary movement, or DBD's true coordinates.
+                                The pin is constrained to the Hens333 map's colored outer silhouette.
                                 Hold I/J/K/L to correct the pin on the map and O/P to correct its heading.
                                 Recalibrate with Ctrl+Shift+N for larger drift.
                             </div>

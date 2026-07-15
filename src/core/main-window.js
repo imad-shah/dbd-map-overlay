@@ -3,6 +3,7 @@ const path = require("path");
 const {autoUpdater} = require("electron-updater");
 const fs = require("fs");
 const { imageSize } = require('image-size')
+const {extractPlayableBoundary} = require('./navigation-boundary');
 
 const debug = process.env.DEBUG === 'true';
 
@@ -56,6 +57,14 @@ class MainWindow {
                     }
                 } else {
                     imgData = Buffer.from(map, "base64")
+                }
+                if (
+                    this.navigationTracker?.supportsMap(map) &&
+                    !this.navigationTracker.hasBoundaryForMap(map)
+                ) {
+                    extractPlayableBoundary(imgData)
+                        .then(boundary => this.navigationTracker.setPlayableBoundary(map, boundary))
+                        .catch(error => console.warn('Could not extract navigation boundary:', error.message));
                 }
                 const dimensions = imageSize(imgData);
                 const mapWidth = parseInt(settings.get('size'));

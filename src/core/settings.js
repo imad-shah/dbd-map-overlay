@@ -20,7 +20,8 @@ const defaultConfig = {
     mapDetection: false,
     ocrLanguage: 'all',
     preferredCreator: '',
-    navigationMoveSpeed: 0.035,
+    navigationMoveSpeed: 0.07,
+    navigationMoveSpeedRevision: 1,
     navigationMouseSensitivity: 0.135,
     navigationSensitivityRevision: 1
 };
@@ -42,6 +43,13 @@ class Settings {
                 this.settings.navigationMouseSensitivity = 0.135;
             }
             this.settings.navigationSensitivityRevision = 1;
+            settingsChanged = true;
+        }
+        if (this.settings.navigationMoveSpeedRevision !== 1) {
+            if (Number(this.settings.navigationMoveSpeed) === 0.035) {
+                this.settings.navigationMoveSpeed = 0.07;
+            }
+            this.settings.navigationMoveSpeedRevision = 1;
             settingsChanged = true;
         }
         for (let key in defaultConfig) {

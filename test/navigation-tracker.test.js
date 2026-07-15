@@ -101,3 +101,16 @@ test('hiding a map releases global input and showing it resumes the prior tracke
     assert.equal(input.started, true);
     tracker.destroy();
 });
+
+test('calibration is clamped to the extracted playable map boundary', () => {
+    const {tracker} = createTracker();
+    const map = '/Hens333/Red Forest/Mothers Dwelling.webp';
+    const rows = Array.from({length: 5}, () => [{min: 0.2, max: 0.8}]);
+    tracker.setMap(map);
+    assert.equal(tracker.setPlayableBoundary(map, {rows, minY: 0.25, maxY: 0.75}), true);
+    tracker.startCalibration();
+    tracker.commitCalibration({x: 0.95, y: 0.05, heading: 0});
+
+    assert.deepEqual(tracker.getState().position, {x: 0.8, y: 0.25});
+    tracker.destroy();
+});

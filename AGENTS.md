@@ -45,7 +45,7 @@ index.js
 - `src/core/user-data.js`: IPC-backed storage for downloaded maps in `<userData>/photo/` and user imports in `<userData>/custom/`.
 - `src/core/hotkeys.js`: persists `<userData>/hotkeys.json`, registers global defaults and per-map shortcuts, and reloads all registrations after changes.
 - `src/core/map-detector.js`: DBD-window capture, sharp preprocessing, Tesseract worker lifecycle, localized/fuzzy OCR matching, and detector IPC.
-- `src/core/navigation-tracker.js`, `navigation-input.js`, and `navigation-math.js`: Hens333 calibration, global input lifecycle, 30 Hz dead reckoning, and tested camera-relative pose math.
+- `src/core/navigation-tracker.js`, `navigation-input.js`, `navigation-math.js`, and `navigation-boundary.js`: Hens333 calibration, global input lifecycle, 30 Hz dead reckoning, image-derived playable silhouettes, and tested pose math.
 - `src/core/tray.js`: show/hide/quit tray behavior; close/minimize only hides the main window when `minimizeToTray` is enabled.
 - `src/core/stream-deck.js`: directory picker and JSON writer used by the renderer's Linux Stream Controller generator.
 - `src/renderer.js`: composition root for renderer feature classes and global UI actions.
@@ -101,15 +101,15 @@ A fresh install needs network access to populate maps. If remote synchronization
 
 ## Settings and Shortcuts
 
-Important defaults in `src/core/settings.js`: size `250`, top-left position `1`, opacity `0.5`, click-through/non-draggable overlay, rotation `0`, display `0`, detection disabled, all OCR languages, navigation speed `0.035` map widths/sec, and mouse sensitivity `0.135` degrees/unit.
+Important defaults in `src/core/settings.js`: size `250`, top-left position `1`, opacity `0.5`, click-through/non-draggable overlay, rotation `0`, display `0`, detection disabled, all OCR languages, navigation speed `0.07` map widths/sec, and mouse sensitivity `0.135` degrees/unit.
 
 `Ctrl/Cmd+Shift+N` makes the overlay interactive: the first click places a normalized Hens333 pin and the second records clockwise facing from map north, then global WASD/mouse tracking starts. The map image remains at its configured fixed rotation; only the pin position and arrow heading change. Hiding the map releases global input and showing the same map resumes it with the calibrated pose; a new OCR scan or different map resets the pose. The user validated calibration plus live position/heading input in Electron on 2026-07-14.
 
-Dead reckoning is approximate: it applies one configurable speed to W/A/S/D, normalizes diagonals, ignores collision/forced motion, and clamps the pin to image bounds. `uiohook-napi` supplies absolute global mouse positions rather than Windows `WM_INPUT` deltas, so DBD raw/locked mouse behavior must be validated and may require a replaceable Windows-native input backend. Pause tracking while tabbed out to prevent unrelated input drift.
+Dead reckoning is approximate: it applies one configurable speed to W/A/S/D, normalizes diagonals, and ignores collision/forced motion. For Hens333 maps, `navigation-boundary.js` extracts the bright-lavender playable silhouette at 128x128 and clamps calibration plus every tick to its outer shape while filling internal artwork/building holes; this is not wall or obstacle collision. `uiohook-napi` supplies absolute global mouse positions rather than Windows `WM_INPUT` deltas, so DBD raw/locked mouse behavior must be validated and may require a replaceable Windows-native input backend. Pause tracking while tabbed out to prevent unrelated input drift.
 
 On Windows, `navigation-input.js` locks to the display containing the first tracked mouse event and wraps either horizontal edge to its center through `windows-cursor.js`; the matching synthetic center event is ignored, allowing unbounded heading changes without false rotation. Tune defaults in `src/core/settings.js` (`navigationMoveSpeed`, `navigationMouseSensitivity`); runtime fallbacks live at the top of `navigation-tracker.js`, UI ranges are in `src/index.html`, and saved values are in `<userData>/settings-app.json`.
 
-While tracking, hold I/J/K/L for slow map-relative up/left/down/right pose corrections (0.02 map widths/sec) and O/P for counterclockwise/clockwise heading corrections (15 degrees/sec); these fixed rates live in `navigation-tracker.js`.
+While tracking, hold I/J/K/L for map-relative up/left/down/right pose corrections (0.08 map widths/sec) and O/P for counterclockwise/clockwise heading corrections (60 degrees/sec); these fixed rates live in `navigation-tracker.js`.
 
 Default global shortcuts:
 
@@ -164,7 +164,7 @@ Set `DEBUG=true` before `npm start` to open main-window DevTools. Renderer debug
 
 ## Validation
 
-`npm test` runs built-in Node tests for navigation math/lifecycle/input filtering and Hens333 automatic lookup. There is no lint or automated Electron integration-test setup. At minimum after code changes:
+`npm test` runs built-in Node tests for navigation boundary extraction, math/lifecycle/input filtering, and Hens333 automatic lookup. There is no lint or automated Electron integration-test setup. At minimum after code changes:
 
 - Run `npm test` and `node --check` on changed JavaScript files.
 - Start the Electron app and exercise the affected IPC/window path.
