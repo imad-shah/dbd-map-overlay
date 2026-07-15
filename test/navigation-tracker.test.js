@@ -81,3 +81,23 @@ test('canceling recalibration resumes a previously active tracker', () => {
     assert.equal(input.started, true);
     tracker.destroy();
 });
+
+test('hiding a map releases global input and showing it resumes the prior tracker', () => {
+    const {input, tracker} = createTracker();
+    const map = '/Hens333/Red Forest/Mothers Dwelling.webp';
+    tracker.setMap(map);
+    tracker.startCalibration();
+    tracker.commitCalibration({x: 0.4, y: 0.6, heading: 90});
+
+    tracker.setMap('');
+    assert.equal(tracker.getState().tracking, false);
+    assert.deepEqual(tracker.getState().position, {x: 0.4, y: 0.6});
+    assert.equal(input.started, false);
+    assert.equal(tracker.startCalibration().reason, 'no-hens333-map');
+    assert.equal(tracker.toggleTracking().reason, 'map-hidden');
+
+    tracker.setMap(map);
+    assert.equal(tracker.getState().tracking, true);
+    assert.equal(input.started, true);
+    tracker.destroy();
+});

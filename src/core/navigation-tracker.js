@@ -1,13 +1,20 @@
 'use strict';
 
 const {ipcMain} = require('electron');
-const {applyHeadingDelta, advancePose, normalizeHeading} = require('./navigation-math');
+const {
+    applyHeadingDelta,
+    applyPoseCorrection,
+    advancePose,
+    normalizeHeading
+} = require('./navigation-math');
 const {NavigationInput} = require('./navigation-input');
 
 const TRACKING_INTERVAL_MS = 1000 / 30;
 const MAX_TICK_SECONDS = 0.1;
 const DEFAULT_MOVE_SPEED = 0.035;
-const DEFAULT_MOUSE_SENSITIVITY = 0.15;
+const DEFAULT_MOUSE_SENSITIVITY = 0.135;
+const POSITION_CORRECTION_SPEED = 0.02;
+const HEADING_CORRECTION_SPEED = 15;
 
 class NavigationTracker {
     constructor(mainWindow, overlayWindow, settings, input = null, ipc = ipcMain) {
@@ -15,6 +22,8 @@ class NavigationTracker {
         this.overlayWindow = overlayWindow;
         this.settings = settings;
         this.currentMap = null;
+        this.mapVisible = false;
+        this.resumeTrackingWhenShown = false;
         this.stateBeforeCalibration = null;
         this.state = this._emptyState();
         this.movement = this._emptyMovement();
@@ -46,7 +55,18 @@ class NavigationTracker {
     }
 
     _emptyMovement() {
-        return {forward: false, backward: false, left: false, right: false};
+        return {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            mapUp: false,
+            mapDown: false,
+            mapLeft: false,
+            mapRight: false,
+            turnCounterclockwise: false,
+            turnClockwise: false
+        };
     }
 
     _emptyState() {
@@ -156,8 +176,15 @@ class NavigationTracker {
             mouseDeltaX,
             this._settingNumber('navigationMouseSensitivity', DEFAULT_MOUSE_SENSITIVITY, 0, 5)
         );
-        const pose = advancePose(
+        const correctedPose = applyPoseCorrection(
             {...this.state.position, heading},
+            this.movement,
+            elapsed,
+            POSITION_CORRECTION_SPEED,
+            HEADING_CORRECTION_SPEED
+        );
+        const pose = advancePose(
+            correctedPose,
             this.movement,
             elapsed,
             this._settingNumber('navigationMoveSpeed', DEFAULT_MOVE_SPEED, 0, 0.25)
@@ -170,22 +197,49 @@ class NavigationTracker {
     setMap(map) {
         const normalizedMap = this._normalizeMap(map);
         if (!normalizedMap) {
+            let shouldResume = this.resumeTrackingWhenShown || this.state.tracking;
             if (this.state.status === 'calibrating') {
-                this.cancelCalibration();
-            } else {
-                this.overlayWindow.endInteraction();
+                const previousState = this.stateBeforeCalibration || {
+                    status: 'awaiting-calibration',
+                    map: this.currentMap,
+                    position: null,
+                    heading: null,
+                    tracking: false,
+                    inputError: null
+                };
+                shouldResume = previousState.tracking;
+                this.state = previousState;
+                this.state.tracking = false;
+                this.stateBeforeCalibration = null;
             }
+            this._stopInputTracking();
+            this.overlayWindow.endInteraction();
+            this.mapVisible = false;
+            this.resumeTrackingWhenShown = shouldResume;
+            this._broadcast();
             return;
         }
         if (!this._isHens333Map(normalizedMap)) {
             this.reset();
             return;
         }
-        if (normalizedMap === this.currentMap) return;
+        if (normalizedMap === this.currentMap) {
+            if (this.mapVisible) return;
+            this.mapVisible = true;
+            const shouldResume = this.resumeTrackingWhenShown;
+            this.resumeTrackingWhenShown = false;
+            if (shouldResume && this.state.status === 'calibrated') {
+                this._startInputTracking();
+            }
+            this._broadcast();
+            return;
+        }
 
         this._stopInputTracking();
         this.overlayWindow.endInteraction();
         this.currentMap = normalizedMap;
+        this.mapVisible = true;
+        this.resumeTrackingWhenShown = false;
         this.stateBeforeCalibration = null;
         this.state = {
             status: 'awaiting-calibration',
@@ -198,8 +252,12 @@ class NavigationTracker {
         this._broadcast();
     }
 
+    canStartCalibration() {
+        return this.mapVisible && this._isHens333Map(this.currentMap);
+    }
+
     startCalibration() {
-        if (!this._isHens333Map(this.currentMap)) {
+        if (!this.canStartCalibration()) {
             this.mainWindow.sendUpdate('Detect or select a Hens333 map before placing the navigation pin.');
             return {ok: false, reason: 'no-hens333-map'};
         }
@@ -277,6 +335,10 @@ class NavigationTracker {
     }
 
     toggleTracking() {
+        if (!this.mapVisible) {
+            this.mainWindow.sendUpdate('Show the map before starting navigation tracking.');
+            return {ok: false, reason: 'map-hidden'};
+        }
         if (this.state.status !== 'calibrated' || !this.state.position) {
             this.mainWindow.sendUpdate('Calibrate a Hens333 map before starting navigation tracking.');
             return {ok: false, reason: 'not-calibrated'};
@@ -303,6 +365,8 @@ class NavigationTracker {
         this._stopInputTracking();
         this.overlayWindow.endInteraction();
         this.currentMap = null;
+        this.mapVisible = false;
+        this.resumeTrackingWhenShown = false;
         this.stateBeforeCalibration = null;
         this.state = this._emptyState();
         if (wasActive) this._broadcast();

@@ -64,12 +64,12 @@ class Options {
         $("#preferredCreatorSelect").val(savedCreator);
 
         const savedNavigationSpeed = Number(settings.get("navigationMoveSpeed")) || 0.035;
-        const savedMouseSensitivity = Number(settings.get("navigationMouseSensitivity")) || 0.15;
+        const savedMouseSensitivity = Number(settings.get("navigationMouseSensitivity")) || 0.135;
         const updateNavigationSpeedLabel = value => {
             $("#navigationMoveSpeedValue").text(`${(Number(value) * 100).toFixed(1)}% map/sec`);
         };
         const updateMouseSensitivityLabel = value => {
-            $("#navigationMouseSensitivityValue").text(`${Number(value).toFixed(2)}°/unit`);
+            $("#navigationMouseSensitivityValue").text(`${Number(value).toFixed(3)}°/unit`);
         };
         $("#navigationMoveSpeedRange").val(savedNavigationSpeed);
         $("#navigationMouseSensitivityRange").val(savedMouseSensitivity);

@@ -36,6 +36,21 @@ function cursorWrapTarget(point, bounds, margin = DEFAULT_CURSOR_WRAP_MARGIN) {
     };
 }
 
+function navigationKeyMap(keys) {
+    return new Map([
+        [keys.W, 'forward'],
+        [keys.S, 'backward'],
+        [keys.A, 'left'],
+        [keys.D, 'right'],
+        [keys.I, 'mapUp'],
+        [keys.K, 'mapDown'],
+        [keys.J, 'mapLeft'],
+        [keys.L, 'mapRight'],
+        [keys.O, 'turnCounterclockwise'],
+        [keys.P, 'turnClockwise']
+    ]);
+}
+
 class NavigationInput {
     constructor({
         onMovementChange,
@@ -64,7 +79,13 @@ class NavigationInput {
             forward: this.pressed.has('forward'),
             backward: this.pressed.has('backward'),
             left: this.pressed.has('left'),
-            right: this.pressed.has('right')
+            right: this.pressed.has('right'),
+            mapUp: this.pressed.has('mapUp'),
+            mapDown: this.pressed.has('mapDown'),
+            mapLeft: this.pressed.has('mapLeft'),
+            mapRight: this.pressed.has('mapRight'),
+            turnCounterclockwise: this.pressed.has('turnCounterclockwise'),
+            turnClockwise: this.pressed.has('turnClockwise')
         };
     }
 
@@ -126,12 +147,7 @@ class NavigationInput {
                 this.getBoundsForPoint = point => screen.getDisplayNearestPoint(point).bounds;
             }
             this.hook = uIOhook;
-            this.keyMap = new Map([
-                [UiohookKey.W, 'forward'],
-                [UiohookKey.S, 'backward'],
-                [UiohookKey.A, 'left'],
-                [UiohookKey.D, 'right']
-            ]);
+            this.keyMap = navigationKeyMap(UiohookKey);
             this.handlers = {
                 keydown: event => this._handleKey(event, true),
                 keyup: event => this._handleKey(event, false),
@@ -180,6 +196,7 @@ class NavigationInput {
 
 module.exports = {
     cursorWrapTarget,
+    navigationKeyMap,
     NavigationInput,
     mouseDeltaFromPositions
 };

@@ -21,7 +21,8 @@ const defaultConfig = {
     ocrLanguage: 'all',
     preferredCreator: '',
     navigationMoveSpeed: 0.035,
-    navigationMouseSensitivity: 0.15
+    navigationMouseSensitivity: 0.135,
+    navigationSensitivityRevision: 1
 };
 
 class Settings {
@@ -35,10 +36,22 @@ class Settings {
             fs.writeFileSync(fileDir, JSON.stringify(defaultConfig))
         }
         this.settings = JSON.parse(fs.readFileSync(fileDir, "utf-8"));
+        let settingsChanged = false;
+        if (this.settings.navigationSensitivityRevision !== 1) {
+            if (Number(this.settings.navigationMouseSensitivity) === 0.15) {
+                this.settings.navigationMouseSensitivity = 0.135;
+            }
+            this.settings.navigationSensitivityRevision = 1;
+            settingsChanged = true;
+        }
         for (let key in defaultConfig) {
             if (this.settings[key] === undefined) {
                 this.settings[key] = defaultConfig[key]
+                settingsChanged = true;
             }
+        }
+        if (settingsChanged) {
+            fs.writeFileSync(fileDir, JSON.stringify(this.settings))
         }
         let classInstance = this;
         ipcMain.handle('get-settings', async (event) => {

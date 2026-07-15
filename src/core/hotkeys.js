@@ -98,7 +98,6 @@ class Hotkeys {
             win.send('trigger-map-detection');
         });
         globalShortcut.register('CommandOrControl+Shift+n', () => {
-            console.log('CommandOrControl+Shift+n pressed → navigation calibration');
             if (this.navigationTracker) this.navigationTracker.startCalibration();
         });
         globalShortcut.register('CommandOrControl+Shift+Space', () => {

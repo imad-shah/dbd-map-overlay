@@ -24,6 +24,38 @@ function applyHeadingDelta(heading, mouseDeltaX, degreesPerMouseUnit) {
 }
 
 /**
+ * Applies slow map-relative position and heading corrections to a pose.
+ * These controls are independent of the camera-relative WASD movement.
+ */
+function applyPoseCorrection(
+    pose,
+    input,
+    elapsedSeconds,
+    mapUnitsPerSecond,
+    degreesPerSecond
+) {
+    const elapsed = Math.max(0, Number(elapsedSeconds) || 0);
+    const positionSpeed = Math.max(0, Number(mapUnitsPerSecond) || 0);
+    const headingSpeed = Math.max(0, Number(degreesPerSecond) || 0);
+    let horizontal = (input.mapRight ? 1 : 0) - (input.mapLeft ? 1 : 0);
+    let vertical = (input.mapDown ? 1 : 0) - (input.mapUp ? 1 : 0);
+    const length = Math.hypot(horizontal, vertical);
+
+    if (length > 1) {
+        horizontal /= length;
+        vertical /= length;
+    }
+
+    const turn = (input.turnClockwise ? 1 : 0) - (input.turnCounterclockwise ? 1 : 0);
+    return {
+        ...pose,
+        x: clamp((Number(pose.x) || 0) + horizontal * positionSpeed * elapsed, 0, 1),
+        y: clamp((Number(pose.y) || 0) + vertical * positionSpeed * elapsed, 0, 1),
+        heading: normalizeHeading((Number(pose.heading) || 0) + turn * headingSpeed * elapsed)
+    };
+}
+
+/**
  * Advances a normalized map pose from camera-relative movement input.
  * Heading is clockwise from the top of the map; x/y are in the [0, 1] range.
  */
@@ -55,6 +87,7 @@ function advancePose(pose, input, elapsedSeconds, mapUnitsPerSecond) {
 
 module.exports = {
     applyHeadingDelta,
+    applyPoseCorrection,
     advancePose,
     clamp,
     headingFromPoints,

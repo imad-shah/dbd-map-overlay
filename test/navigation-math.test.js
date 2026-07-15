@@ -4,12 +4,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
     applyHeadingDelta,
+    applyPoseCorrection,
     advancePose,
     headingFromPoints,
     normalizeHeading
 } = require('../src/core/navigation-math');
 const {
     cursorWrapTarget,
+    navigationKeyMap,
     NavigationInput,
     mouseDeltaFromPositions
 } = require('../src/core/navigation-input');
@@ -29,6 +31,39 @@ test('derives heading clockwise from map north', () => {
 test('turns clockwise from positive horizontal mouse motion', () => {
     assert.equal(applyHeadingDelta(350, 20, 1), 10);
     assert.equal(applyHeadingDelta(10, -20, 1), 350);
+});
+
+test('applies map-relative position and heading corrections', () => {
+    const corrected = applyPoseCorrection(
+        {x: 0.5, y: 0.5, heading: 5},
+        {mapUp: true, mapLeft: true, turnCounterclockwise: true},
+        1,
+        0.02,
+        15
+    );
+
+    assert.ok(corrected.x < 0.5);
+    assert.ok(corrected.y < 0.5);
+    assert.equal(corrected.heading, 350);
+});
+
+test('normalizes fine corrections and cancels opposing controls', () => {
+    const corrected = applyPoseCorrection(
+        {x: 0.99, y: 0.01, heading: 45},
+        {
+            mapUp: true,
+            mapDown: true,
+            mapLeft: true,
+            mapRight: true,
+            turnCounterclockwise: true,
+            turnClockwise: true
+        },
+        1,
+        1,
+        90
+    );
+
+    assert.deepEqual(corrected, {x: 0.99, y: 0.01, heading: 45});
 });
 
 test('derives mouse deltas while rejecting cursor warps', () => {
@@ -63,6 +98,28 @@ test('ignores the synthetic center event after wrapping the cursor', () => {
 
     assert.deepEqual(moves, [{x: 500, y: 300}]);
     assert.deepEqual(deltas, [{dx: -37, dy: 0}, {dx: -10, dy: 0}]);
+});
+
+test('maps fine calibration keys to map-relative corrections', () => {
+    const keyMap = navigationKeyMap({
+        W: 1,
+        S: 2,
+        A: 3,
+        D: 4,
+        I: 5,
+        J: 6,
+        K: 7,
+        L: 8,
+        O: 9,
+        P: 10
+    });
+
+    assert.equal(keyMap.get(5), 'mapUp');
+    assert.equal(keyMap.get(6), 'mapLeft');
+    assert.equal(keyMap.get(7), 'mapDown');
+    assert.equal(keyMap.get(8), 'mapRight');
+    assert.equal(keyMap.get(9), 'turnCounterclockwise');
+    assert.equal(keyMap.get(10), 'turnClockwise');
 });
 
 test('moves forward relative to heading', () => {
